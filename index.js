@@ -60,7 +60,8 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
             const readableStream = new Readable({
                   async read() {
                         for (let i = 0; i < videoBuffer.length; i += chunkSize) {
-                              this.push(videoBuffer.slice(i, i + chunkSize));
+                              const chunk = videoBuffer.subarray(i, i + chunkSize);
+                              this.push(chunk);
                               await new Promise((resolve) => setTimeout(resolve, 50));
                         }
                         this.push(null);
