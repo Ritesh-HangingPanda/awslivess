@@ -52,6 +52,8 @@ const createLivenessSession = async () => {
       }
 };
 
+// 📝 Start Liveness Streaming
+
 const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
       try {
             const videoBuffer = Buffer.from(videoStreamBase64, 'base64');
