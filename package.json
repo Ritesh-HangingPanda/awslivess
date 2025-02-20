@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.750.0",
-    "@aws-sdk/client-rekognitionstreaming": "^3.751.0"
+    "@aws-sdk/client-rekognitionstreaming": "^3.751.0",
+    "stream": "^0.0.3"
   }
 }

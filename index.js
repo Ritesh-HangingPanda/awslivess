@@ -9,6 +9,7 @@ const {
       StartFaceLivenessSessionCommand
 } = require("@aws-sdk/client-rekognitionstreaming");
 
+const { Readable } = require('stream');
 const rekognitionClient = new RekognitionClient({ region: "us-east-1" });
 const rekognitionStreamingClient = new RekognitionStreamingClient({ region: "us-east-1" });
 
@@ -51,11 +52,23 @@ const createLivenessSession = async () => {
       }
 };
 
-const startLivenessStreaming = async (sessionId, videoStream) => {
+const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
       try {
+            const videoBuffer = Buffer.from(videoStreamBase64, 'base64');
+            const chunkSize = 64 * 1024;
+
+            const readableStream = new Readable({
+                  read() {
+                        for (let i = 0; i < videoBuffer.length; i += chunkSize) {
+                              this.push(videoBuffer.slice(i, i + chunkSize));
+                        }
+                        this.push(null);
+                  }
+            });
+
             const params = {
                   SessionId: sessionId,
-                  VideoStream: videoStream,
+                  LivenessRequestStream: readableStream
             };
 
             const command = new StartFaceLivenessSessionCommand(params);
@@ -72,7 +85,10 @@ const startLivenessStreaming = async (sessionId, videoStream) => {
       } catch (error) {
             return {
                   statusCode: 500,
-                  body: JSON.stringify({ message: "Failed to start liveness streaming", error: error.message }),
+                  body: JSON.stringify({
+                        message: "Failed to start liveness streaming",
+                        error: error.message,
+                  }),
             };
       }
 };
