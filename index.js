@@ -10,6 +10,7 @@ const {
 } = require("@aws-sdk/client-rekognitionstreaming");
 
 const { Readable } = require("stream");
+const { Buffer } = require('buffer');
 
 const rekognitionClient = new RekognitionClient({ region: "us-east-1" });
 const rekognitionStreamingClient = new RekognitionStreamingClient({ region: "us-east-1" });
@@ -87,7 +88,7 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
                               await new Promise((resolve) => setTimeout(resolve, 50));
                         }
                         this.push(null);
-                  }
+                  },
             });
 
             const params = {
@@ -103,7 +104,7 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                         message: "Liveness streaming started successfully",
-                        result: response
+                        result: response,
                   }),
             };
       } catch (error) {
@@ -134,7 +135,7 @@ const getLivenessResults = async (sessionId) => {
                         message: "Liveness results fetched successfully",
                         livenessConfirmed: isLivenessConfirmed,
                         confidence: response.Confidence,
-                        details: response
+                        details: response,
                   }),
             };
       } catch (error) {
