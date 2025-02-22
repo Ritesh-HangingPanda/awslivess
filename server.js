@@ -1,4 +1,4 @@
-require("dotenv").config();
+require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const { Readable } = require("stream");
@@ -50,39 +50,34 @@ app.get("/aws-check", async (req, res) => {
 // 🎥 Start Liveness Streaming Endpoint
 app.post("/startStreaming", async (req, res) => {
       try {
-            const { SessionId, videoChunks, VideoWidth, VideoHeight, ChallengeVersions } = req.body;
-            if (!Array.isArray(videoChunks)) {
-                  return res.status(400).json({ message: "Invalid videoChunks format" });
-            }
+            const { SessionId, videoChunks, VideoWidth = "720", VideoHeight = "1280", ChallengeVersions = "1.0" } = req.body;
+            if (!Array.isArray(videoChunks)) return res.status(400).json({ message: "Invalid videoChunks format" });
 
             console.log(`Received ${videoChunks.length} chunks for session ${SessionId}`);
 
             const chunkSize = 64 * 1024;
             let timestamp = Date.now();
 
-            const readableStream = Readable.from(
-                  (async function* () {
-                        for (const base64Chunk of videoChunks) {
-                              const bufferChunk = Buffer.from(base64Chunk, "base64");
-                              for (let i = 0; i < bufferChunk.length; i += chunkSize) {
-                                    const chunkPart = bufferChunk.subarray(i, i + chunkSize);
-                                    yield {
-                                          VideoEvent: {
-                                                VideoChunk: new Uint8Array(chunkPart),
-                                                TimestampMillis: timestamp,
-                                          },
-                                    };
-                                    timestamp += 50;
-                              }
+            const readableStream = Readable.from((async function* () {
+                  for (const base64Chunk of videoChunks) {
+                        const bufferChunk = Buffer.from(base64Chunk, "base64");
+                        for (let i = 0; i < bufferChunk.length; i += chunkSize) {
+                              yield {
+                                    VideoEvent: {
+                                          VideoChunk: new Uint8Array(bufferChunk.subarray(i, i + chunkSize)),
+                                          TimestampMillis: timestamp,
+                                    },
+                              };
+                              timestamp += 50;
                         }
-                  })()
-            );
+                  }
+            })());
 
             const params = {
                   SessionId,
-                  VideoWidth: VideoWidth || "720",
-                  VideoHeight: VideoHeight || "1280",
-                  ChallengeVersions: ChallengeVersions || "1.0",
+                  VideoWidth,
+                  VideoHeight,
+                  ChallengeVersions,
                   LivenessRequestStream: readableStream,
             };
 
