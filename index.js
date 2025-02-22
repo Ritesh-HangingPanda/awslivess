@@ -1,34 +1,54 @@
 const {
       RekognitionClient,
       CreateFaceLivenessSessionCommand,
-      GetFaceLivenessSessionResultsCommand
+      GetFaceLivenessSessionResultsCommand,
 } = require("@aws-sdk/client-rekognition");
 
 const {
       RekognitionStreamingClient,
-      StartFaceLivenessSessionCommand
+      StartFaceLivenessSessionCommand,
 } = require("@aws-sdk/client-rekognitionstreaming");
 
-const { Readable } = require('stream');
+const { Readable } = require("stream");
+
 const rekognitionClient = new RekognitionClient({ region: "us-east-1" });
 const rekognitionStreamingClient = new RekognitionStreamingClient({ region: "us-east-1" });
 
 exports.handler = async (event) => {
-      const body = JSON.parse(event.body || '{}');
+      try {
+            const body = JSON.parse(event.body || "{}");
 
-      if (body.action === 'createSession') {
-            return await createLivenessSession();
-      } else if (body.action === 'startStreaming' && body.sessionId && body.videoStream) {
-            return await startLivenessStreaming(body.sessionId, body.videoStream);
-      } else if (body.action === 'getResults' && body.sessionId) {
-            return await getLivenessResults(body.sessionId);
-      } else {
-            return {
-                  statusCode: 400,
-                  body: JSON.stringify({ message: "Invalid request. Please provide a valid action and required fields." }),
-            };
+            switch (body.action) {
+                  case "createSession":
+                        return await createLivenessSession();
+                  case "startStreaming":
+                        if (body.sessionId && body.videoStream) {
+                              return await startLivenessStreaming(body.sessionId, body.videoStream);
+                        }
+                        break;
+                  case "getResults":
+                        if (body.sessionId) {
+                              return await getLivenessResults(body.sessionId);
+                        }
+                        break;
+                  default:
+                        return invalidRequestResponse();
+            }
+            return invalidRequestResponse();
+      } catch (error) {
+            return errorResponse("Error processing request", error);
       }
 };
+
+const invalidRequestResponse = () => ({
+      statusCode: 400,
+      body: JSON.stringify({ message: "Invalid request. Provide valid action and required fields." }),
+});
+
+const errorResponse = (message, error) => ({
+      statusCode: 500,
+      body: JSON.stringify({ message, error: error.message }),
+});
 
 // 📝 Create Liveness Session
 const createLivenessSession = async () => {
@@ -41,8 +61,8 @@ const createLivenessSession = async () => {
                   statusCode: 200,
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                        message: response.message,
-                        result: response.result
+                        message: "Liveness session created successfully",
+                        result: response,
                   }),
             };
       } catch (error) {
@@ -56,7 +76,7 @@ const createLivenessSession = async () => {
 // 🎥 Start Liveness Streaming
 const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
       try {
-            const videoBuffer = Buffer.from(videoStreamBase64, 'base64');
+            const videoBuffer = Buffer.from(videoStreamBase64, "base64");
             const chunkSize = 64 * 1024;
 
             const readableStream = new Readable({
@@ -72,7 +92,7 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
 
             const params = {
                   SessionId: sessionId,
-                  LivenessRequestStream: readableStream
+                  LivenessRequestStream: readableStream,
             };
 
             const command = new StartFaceLivenessSessionCommand(params);
@@ -80,6 +100,7 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
 
             return {
                   statusCode: 200,
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                         message: "Liveness streaming started successfully",
                         result: response
@@ -103,7 +124,8 @@ const getLivenessResults = async (sessionId) => {
             const command = new GetFaceLivenessSessionResultsCommand(params);
             const response = await rekognitionClient.send(command);
 
-            const isLivenessConfirmed = response.Confidence >= 0.8 && response.Status === "LIVENESS_CONFIRMED";
+            const isLivenessConfirmed =
+                  response.Confidence >= 0.8 && response.Status === "LIVENESS_CONFIRMED";
 
             return {
                   statusCode: 200,
