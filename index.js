@@ -68,16 +68,16 @@ const createLivenessSession = async () => {
                   }),
             };
       } catch (error) {
-            return {
-                  statusCode: 500,
-                  body: JSON.stringify({ message: "Failed to create liveness session", error: error.message }),
-            };
+            return errorResponse("Failed to create liveness session", error);
       }
 };
 
 // Start Liveness Streaming with chunked data
 const startLivenessStreaming = async (sessionId, videoChunksBase64) => {
       try {
+            if (!Array.isArray(videoChunksBase64)) {
+                  throw new Error("videoChunksBase64 must be an array");
+            }
             const videoBuffer = Buffer.concat(videoChunksBase64.map(chunk => Buffer.from(chunk, "base64")));
             const chunkSize = 64 * 1024;
 
@@ -109,13 +109,7 @@ const startLivenessStreaming = async (sessionId, videoChunksBase64) => {
                   }),
             };
       } catch (error) {
-            return {
-                  statusCode: 500,
-                  body: JSON.stringify({
-                        message: "Failed to start liveness streaming",
-                        error: error.message,
-                  }),
-            };
+            return errorResponse("Failed to start liveness streaming", error);
       }
 };
 
@@ -140,9 +134,6 @@ const getLivenessResults = async (sessionId) => {
                   }),
             };
       } catch (error) {
-            return {
-                  statusCode: 500,
-                  body: JSON.stringify({ message: "Failed to fetch liveness results", error: error.message }),
-            };
+            return errorResponse("Failed to fetch liveness results", error);
       }
 };
