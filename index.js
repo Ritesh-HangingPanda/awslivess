@@ -1,3 +1,5 @@
+// Lambda Function: Handle Liveness Session, Chunked Streaming, and Results
+
 const {
       RekognitionClient,
       CreateFaceLivenessSessionCommand,
@@ -22,8 +24,8 @@ exports.handler = async (event) => {
                   case "createSession":
                         return await createLivenessSession();
                   case "startStreaming":
-                        if (body.sessionId && body.videoStream) {
-                              return await startLivenessStreaming(body.sessionId, body.videoStream);
+                        if (body.sessionId && body.videoChunks) {
+                              return await startLivenessStreaming(body.sessionId, body.videoChunks);
                         }
                         break;
                   case "getResults":
@@ -50,7 +52,7 @@ const errorResponse = (message, error) => ({
       body: JSON.stringify({ message, error: error.message }),
 });
 
-// 📝 Create Liveness Session
+// Create Liveness Session
 const createLivenessSession = async () => {
       try {
             const params = { ClientRequestToken: Date.now().toString() };
@@ -73,10 +75,10 @@ const createLivenessSession = async () => {
       }
 };
 
-// 🎥 Start Liveness Streaming
-const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
+// Start Liveness Streaming with chunked data
+const startLivenessStreaming = async (sessionId, videoChunksBase64) => {
       try {
-            const videoBuffer = Buffer.from(videoStreamBase64, "base64");
+            const videoBuffer = Buffer.concat(videoChunksBase64.map(chunk => Buffer.from(chunk, "base64")));
             const chunkSize = 64 * 1024;
 
             const readableStream = new Readable({
@@ -117,7 +119,7 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
       }
 };
 
-// ✅ Retrieve Liveness Results
+// Retrieve Liveness Results
 const getLivenessResults = async (sessionId) => {
       try {
             const params = { SessionId: sessionId };
