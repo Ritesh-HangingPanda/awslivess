@@ -33,18 +33,13 @@ const rekognitionStreamingClient = new RekognitionStreamingClient({
 app.get("/aws-check", async (req, res) => {
       try {
             const stsResponse = await stsClient.send(new GetCallerIdentityCommand({}));
-            console.log("✅ AWS STS Identity:", stsResponse);
-
             const rekognitionResponse = await rekognitionClient.send(new ListCollectionsCommand({}));
-            console.log("✅ Rekognition Collections:", rekognitionResponse);
-
             res.status(200).json({
                   message: "AWS Connectivity Successful",
                   sts: stsResponse,
                   rekognition: rekognitionResponse,
             });
       } catch (error) {
-            console.error("❌ AWS Error:", error);
             res.status(500).json({
                   message: "AWS Connectivity Error",
                   error: error.message,
