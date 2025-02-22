@@ -24,12 +24,13 @@ exports.handler = async (event) => {
             return await getLivenessResults(body.sessionId);
       } else {
             return {
-                  statusCode: 500,
-                  body: JSON.stringify({ message: "Invalid request. Please provide valid action and required fields." }),
+                  statusCode: 400,
+                  body: JSON.stringify({ message: "Invalid request. Please provide a valid action and required fields." }),
             };
       }
 };
 
+// 📝 Create Liveness Session
 const createLivenessSession = async () => {
       try {
             const params = { ClientRequestToken: Date.now().toString() };
@@ -40,8 +41,8 @@ const createLivenessSession = async () => {
                   statusCode: 200,
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                        message: "Liveness session created successfully",
-                        result: response
+                        message: response.message,
+                        result: response.result
                   }),
             };
       } catch (error) {
@@ -52,22 +53,19 @@ const createLivenessSession = async () => {
       }
 };
 
-// 📝 Start Liveness Streaming
-
+// 🎥 Start Liveness Streaming
 const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
       try {
             const videoBuffer = Buffer.from(videoStreamBase64, 'base64');
             const chunkSize = 64 * 1024;
 
             const readableStream = new Readable({
-                  async read() {
+                  read() {
                         for (let i = 0; i < videoBuffer.length; i += chunkSize) {
-                              const chunk = videoBuffer.subarray(i, i + chunkSize);
-                              this.push(chunk);
-                              await new Promise((resolve) => setTimeout(resolve, 50));
+                              this.push(videoBuffer.subarray(i, i + chunkSize));
                         }
                         this.push(null);
-                  }
+                  },
             });
 
             const params = {
@@ -80,10 +78,9 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
 
             return {
                   statusCode: 200,
-                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                         message: "Liveness streaming started successfully",
-                        result: response,
+                        result: response
                   }),
             };
       } catch (error) {
@@ -97,8 +94,7 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
       }
 };
 
-
-// 📝 Retrieve Liveness Results
+// ✅ Retrieve Liveness Results
 const getLivenessResults = async (sessionId) => {
       try {
             const params = { SessionId: sessionId };
@@ -114,7 +110,7 @@ const getLivenessResults = async (sessionId) => {
                         message: "Liveness results fetched successfully",
                         livenessConfirmed: isLivenessConfirmed,
                         confidence: response.Confidence,
-                        details: response,
+                        details: response
                   }),
             };
       } catch (error) {
