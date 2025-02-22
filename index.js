@@ -77,19 +77,10 @@ const createLivenessSession = async () => {
 // 🎥 Start Liveness Streaming
 const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
       try {
+            if (!sessionId || !videoStreamBase64) throw new Error("Missing sessionId or videoStreamBase64.");
             const videoBuffer = Buffer.from(videoStreamBase64, "base64");
             const chunkSize = 64 * 1024;
-
-            const readableStream = new Readable({
-                  async read() {
-                        for (let i = 0; i < videoBuffer.length; i += chunkSize) {
-                              const chunk = videoBuffer.subarray(i, i + chunkSize);
-                              this.push(chunk);
-                              await new Promise((resolve) => setTimeout(resolve, 50));
-                        }
-                        this.push(null);
-                  },
-            });
+            const readableStream = Readable.from(videoBuffer, { highWaterMark: chunkSize });
 
             const params = {
                   SessionId: sessionId,
@@ -113,6 +104,7 @@ const startLivenessStreaming = async (sessionId, videoStreamBase64) => {
                   body: JSON.stringify({
                         message: "Failed to start liveness streaming",
                         error: error.message,
+                        stack: error.stack,
                   }),
             };
       }
