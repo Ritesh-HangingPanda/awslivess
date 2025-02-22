@@ -25,7 +25,7 @@ const rekognitionClient = new RekognitionClient({
 });
 
 const rekognitionStreamingClient = new RekognitionStreamingClient({
-      region: process.env.AWS,
+      region: process.env.AWS_REGION,
       credentials,
 });
 
