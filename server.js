@@ -48,6 +48,7 @@ const rekognitionStreamingClient = new RekognitionStreamingClient({
       region: process.env.AWS_REGION,
       credentials,
       endpoint: `https://rekognition.${process.env.AWS_REGION}.amazonaws.com`,
+      logger: console,
 });
 
 // 🚀 API Endpoint for AWS Connectivity Check
@@ -102,33 +103,39 @@ app.post("/startStreaming", async (req, res) => {
 
             const readableStream = Readable.from(
                   (async function* () {
-                        yield {
-                              ClientSessionInformationEvent: {
-                                    Challenge: {
-                                          FaceMovementAndLightChallenge: {
-                                                ChallengeId,
-                                                VideoStartTimestamp: timestamp,
-                                                VideoEndTimestamp: timestamp + videoChunks.length * 50,
-                                                InitialFace,
-                                                TargetFace,
-                                                ColorDisplayed,
+                        // 🔵 Yield ClientSessionInformationEvent as a Buffer
+                        yield Buffer.from(
+                              JSON.stringify({
+                                    ClientSessionInformationEvent: {
+                                          Challenge: {
+                                                FaceMovementAndLightChallenge: {
+                                                      ChallengeId,
+                                                      VideoStartTimestamp: timestamp,
+                                                      VideoEndTimestamp: timestamp + videoChunks.length * 50,
+                                                      InitialFace,
+                                                      TargetFace,
+                                                      ColorDisplayed,
+                                                },
                                           },
                                     },
-                              },
-                        };
+                              })
+                        );
 
+                        // 🔵 Yield video chunks wrapped as VideoEvent Buffers
                         for (const base64Chunk of videoChunks) {
                               const bufferChunk = Buffer.from(base64Chunk, "base64");
                               for (let i = 0; i < bufferChunk.length; i += chunkSize) {
                                     const chunk = bufferChunk.subarray(i, i + chunkSize);
                                     console.log("🟢 Streaming chunk size:", chunk.length);
-                                    yield {
-                                          VideoEvent: {
-                                                VideoChunk: new Uint8Array(chunk),
-                                                TimestampMillis: timestamp,
-                                                ContentType: "application/octet-stream",
-                                          },
-                                    };
+                                    yield Buffer.from(
+                                          JSON.stringify({
+                                                VideoEvent: {
+                                                      VideoChunk: Array.from(chunk), // Convert Uint8Array to array
+                                                      TimestampMillis: timestamp,
+                                                      ContentType: "application/octet-stream",
+                                                },
+                                          })
+                                    );
                                     timestamp += 50;
                               }
                         }
@@ -139,7 +146,7 @@ app.post("/startStreaming", async (req, res) => {
                   SessionId: SessionId.toString(),
                   VideoWidth: VideoWidth.toString(),
                   VideoHeight: VideoHeight.toString(),
-                  ChallengeVersions: ["1.0"],
+                  ChallengeVersions: "1.0",
                   LivenessRequestStream: readableStream,
             };
 
