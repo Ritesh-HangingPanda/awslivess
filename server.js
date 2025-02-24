@@ -48,7 +48,9 @@ const rekognitionStreamingClient = new RekognitionStreamingClient({
       region: process.env.AWS_REGION,
       credentials,
       endpoint: `https://rekognition.${process.env.AWS_REGION}.amazonaws.com`,
-      logger: console,
+      maxAttempts: 3,
+      retryMode: "standard",
+      logger: console
 });
 
 // 🚀 API Endpoint for AWS Connectivity Check
@@ -103,39 +105,35 @@ app.post("/startStreaming", async (req, res) => {
 
             const readableStream = Readable.from(
                   (async function* () {
-                        // 🔵 Yield ClientSessionInformationEvent as a Buffer
-                        yield Buffer.from(
-                              JSON.stringify({
-                                    ClientSessionInformationEvent: {
-                                          Challenge: {
-                                                FaceMovementAndLightChallenge: {
-                                                      ChallengeId,
-                                                      VideoStartTimestamp: timestamp,
-                                                      VideoEndTimestamp: timestamp + videoChunks.length * 50,
-                                                      InitialFace,
-                                                      TargetFace,
-                                                      ColorDisplayed,
-                                                },
+                        // 🔵 Send ClientSessionInformationEvent
+                        yield {
+                              ClientSessionInformationEvent: {
+                                    Challenge: {
+                                          FaceMovementAndLightChallenge: {
+                                                ChallengeId,
+                                                VideoStartTimestamp: timestamp,
+                                                VideoEndTimestamp: timestamp + videoChunks.length * 50,
+                                                InitialFace,
+                                                TargetFace,
+                                                ColorDisplayed,
                                           },
                                     },
-                              })
-                        );
+                              },
+                        };
 
-                        // 🔵 Yield video chunks wrapped as VideoEvent Buffers
+                        // 🔵 Send VideoEvent chunks properly
                         for (const base64Chunk of videoChunks) {
                               const bufferChunk = Buffer.from(base64Chunk, "base64");
                               for (let i = 0; i < bufferChunk.length; i += chunkSize) {
                                     const chunk = bufferChunk.subarray(i, i + chunkSize);
                                     console.log("🟢 Streaming chunk size:", chunk.length);
-                                    yield Buffer.from(
-                                          JSON.stringify({
-                                                VideoEvent: {
-                                                      VideoChunk: Array.from(chunk), // Convert Uint8Array to array
-                                                      TimestampMillis: timestamp,
-                                                      ContentType: "application/octet-stream",
-                                                },
-                                          })
-                                    );
+
+                                    yield {
+                                          VideoEvent: {
+                                                VideoChunk: chunk,
+                                                TimestampMillis: timestamp,
+                                          },
+                                    };
                                     timestamp += 50;
                               }
                         }
