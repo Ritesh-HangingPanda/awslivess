@@ -74,9 +74,19 @@ app.post("/startStreaming", async (req, res) => {
                   ColorDisplayed,
             } = req.body;
 
-            if (!SessionId || !Array.isArray(videoChunks) || !VideoWidth || !VideoHeight || !ChallengeVersions?.[0] || !ChallengeId || !InitialFace || !TargetFace || !ColorDisplayed) {
+            if (
+                  !SessionId
+                  || !Array.isArray(videoChunks)
+                  || !VideoWidth
+                  || !VideoHeight
+                  || !ChallengeVersions?.[0]
+                  || !ChallengeId
+                  || !InitialFace
+                  || !TargetFace
+                  || !ColorDisplayed
+            ) {
                   return res.status(400).json({
-                        message: "Missing required fields or invalid videoChunks/ChallengeVersions",
+                        message: "Missing required fields",
                   });
             }
 
