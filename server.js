@@ -75,7 +75,6 @@ app.post("/startStreaming", async (req, res) => {
                   videoChunks,
                   VideoWidth,
                   VideoHeight,
-                  ChallengeVersions,
                   ChallengeId,
                   InitialFace,
                   TargetFace,
@@ -87,7 +86,6 @@ app.post("/startStreaming", async (req, res) => {
                   || !Array.isArray(videoChunks)
                   || !VideoWidth
                   || !VideoHeight
-                  || !ChallengeVersions?.[0]
                   || !ChallengeId
                   || !InitialFace
                   || !TargetFace
@@ -138,7 +136,7 @@ app.post("/startStreaming", async (req, res) => {
                   SessionId: SessionId.toString(),
                   VideoWidth: VideoWidth.toString(),
                   VideoHeight: VideoHeight.toString(),
-                  ChallengeVersions: [ChallengeVersions[0]].toString(),
+                  ChallengeVersions: "1.0",
                   LivenessRequestStream: readableStream,
             };
 
