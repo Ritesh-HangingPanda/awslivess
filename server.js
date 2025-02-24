@@ -1,12 +1,23 @@
 require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const { Readable } = require("readable-stream");
+const cors = require("cors");
+const { Readable } = require("stream");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { RekognitionClient, ListCollectionsCommand } = require("@aws-sdk/client-rekognition");
 const { RekognitionStreamingClient, StartFaceLivenessSessionCommand } = require("@aws-sdk/client-rekognitionstreaming");
 
 const app = express();
+
+// 🌐 Enable CORS with credentials
+app.use(
+      cors({
+            origin: process.env.CLIENT_URL || "*",
+            credentials: true,
+      })
+);
+
+// 📝 Middleware
 app.use(bodyParser.json({ limit: "50mb" }));
 
 const credentials = {
@@ -14,6 +25,7 @@ const credentials = {
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 };
 
+// 🛡️ AWS Clients
 const stsClient = new STSClient({
       region: process.env.AWS_REGION,
       credentials,
@@ -50,22 +62,52 @@ app.get("/aws-check", async (req, res) => {
 // 🎥 Start Liveness Streaming Endpoint
 app.post("/startStreaming", async (req, res) => {
       try {
-            const { SessionId, videoChunks, VideoWidth, VideoHeight, ChallengeVersions } = req.body;
-            if (!Array.isArray(videoChunks)) return res.status(400).json({ message: "Invalid videoChunks format" });
+            const {
+                  SessionId,
+                  videoChunks,
+                  VideoWidth,
+                  VideoHeight,
+                  ChallengeVersions,
+                  ChallengeId,
+                  InitialFace,
+                  TargetFace,
+                  ColorDisplayed,
+            } = req.body;
+
+            if (!Array.isArray(videoChunks)) {
+                  return res.status(400).json({ message: "Invalid videoChunks format" });
+            }
 
             const chunkSize = 64 * 1024;
             let timestamp = Date.now();
 
             const readableStream = Readable.from((async function* () {
+                  // 1️⃣ Send ClientSessionInformationEvent first
+                  yield JSON.stringify({
+                        ClientSessionInformationEvent: {
+                              Challenge: {
+                                    FaceMovementAndLightChallenge: {
+                                          ChallengeId,
+                                          VideoStartTimestamp: timestamp,
+                                          VideoEndTimestamp: timestamp + videoChunks.length * 50,
+                                          InitialFace,
+                                          TargetFace,
+                                          ColorDisplayed,
+                                    },
+                              },
+                        },
+                  });
+
+                  // 2️⃣ Stream VideoEvent chunks
                   for (const base64Chunk of videoChunks) {
                         const bufferChunk = Buffer.from(base64Chunk, "base64");
                         for (let i = 0; i < bufferChunk.length; i += chunkSize) {
-                              yield {
+                              yield JSON.stringify({
                                     VideoEvent: {
                                           VideoChunk: new Uint8Array(bufferChunk.subarray(i, i + chunkSize)),
                                           TimestampMillis: timestamp,
                                     },
-                              };
+                              });
                               timestamp += 50;
                         }
                   }
@@ -79,12 +121,9 @@ app.post("/startStreaming", async (req, res) => {
                   LivenessRequestStream: readableStream,
             };
 
-            console.log(readableStream, 'readableStream')
-
             const command = new StartFaceLivenessSessionCommand(params);
             const response = await rekognitionStreamingClient.send(command);
 
-            console.log("AWS Rekognition response:", response);
             res.status(200).json({
                   message: "Liveness streaming started successfully",
                   result: response,
