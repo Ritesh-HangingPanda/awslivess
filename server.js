@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const { Readable } = require("stream");
+const { Readable } = require("readable-stream");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { RekognitionClient, ListCollectionsCommand } = require("@aws-sdk/client-rekognition");
 const { RekognitionStreamingClient, StartFaceLivenessSessionCommand } = require("@aws-sdk/client-rekognitionstreaming");
