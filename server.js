@@ -47,6 +47,7 @@ const rekognitionClient = new RekognitionClient({
 const rekognitionStreamingClient = new RekognitionStreamingClient({
       region: process.env.AWS_REGION,
       credentials,
+      endpoint: `https://rekognition.${process.env.AWS_REGION}.amazonaws.com`,
 });
 
 // 🚀 API Endpoint for AWS Connectivity Check
