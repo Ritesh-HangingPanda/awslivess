@@ -135,10 +135,10 @@ app.post("/startStreaming", async (req, res) => {
             );
 
             const params = {
-                  SessionId,
-                  VideoWidth,
-                  VideoHeight,
-                  ChallengeVersions,
+                  SessionId: SessionId.toString(),
+                  VideoWidth: Number(VideoWidth),
+                  VideoHeight: Number(VideoHeight),
+                  ChallengeVersions: [ChallengeVersions[0]].toString(),
                   LivenessRequestStream: readableStream,
             };
 
