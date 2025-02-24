@@ -1,8 +1,8 @@
-require('dotenv').config();
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { Readable } = require("stream");
+const { Readable } = require("readable-stream");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { RekognitionClient, ListCollectionsCommand } = require("@aws-sdk/client-rekognition");
 const { RekognitionStreamingClient, StartFaceLivenessSessionCommand } = require("@aws-sdk/client-rekognitionstreaming");
@@ -74,50 +74,52 @@ app.post("/startStreaming", async (req, res) => {
                   ColorDisplayed,
             } = req.body;
 
-            if (!Array.isArray(videoChunks)) {
-                  return res.status(400).json({ message: "Invalid videoChunks format" });
+            if (!SessionId || !Array.isArray(videoChunks) || !ChallengeVersions?.[0]) {
+                  return res.status(400).json({
+                        message: "Missing required fields or invalid videoChunks/ChallengeVersions",
+                  });
             }
 
             const chunkSize = 64 * 1024;
             let timestamp = Date.now();
 
-            const readableStream = Readable.from((async function* () {
-                  // 1️⃣ Send ClientSessionInformationEvent first
-                  yield JSON.stringify({
-                        ClientSessionInformationEvent: {
-                              Challenge: {
-                                    FaceMovementAndLightChallenge: {
-                                          ChallengeId,
-                                          VideoStartTimestamp: timestamp,
-                                          VideoEndTimestamp: timestamp + videoChunks.length * 50,
-                                          InitialFace,
-                                          TargetFace,
-                                          ColorDisplayed,
+            const readableStream = Readable.from(
+                  (async function* () {
+                        yield {
+                              ClientSessionInformationEvent: {
+                                    Challenge: {
+                                          FaceMovementAndLightChallenge: {
+                                                ChallengeId,
+                                                VideoStartTimestamp: timestamp,
+                                                VideoEndTimestamp: timestamp + videoChunks.length * 50,
+                                                InitialFace,
+                                                TargetFace,
+                                                ColorDisplayed,
+                                          },
                                     },
                               },
-                        },
-                  });
+                        };
 
-                  // 2️⃣ Stream VideoEvent chunks
-                  for (const base64Chunk of videoChunks) {
-                        const bufferChunk = Buffer.from(base64Chunk, "base64");
-                        for (let i = 0; i < bufferChunk.length; i += chunkSize) {
-                              yield JSON.stringify({
-                                    VideoEvent: {
-                                          VideoChunk: new Uint8Array(bufferChunk.subarray(i, i + chunkSize)),
-                                          TimestampMillis: timestamp,
-                                    },
-                              });
-                              timestamp += 50;
+                        for (const base64Chunk of videoChunks) {
+                              const bufferChunk = Buffer.from(base64Chunk, "base64");
+                              for (let i = 0; i < bufferChunk.length; i += chunkSize) {
+                                    yield {
+                                          VideoEvent: {
+                                                VideoChunk: new Uint8Array(bufferChunk.subarray(i, i + chunkSize)),
+                                                TimestampMillis: timestamp,
+                                          },
+                                    };
+                                    timestamp += 50;
+                              }
                         }
-                  }
-            })());
+                  })()
+            );
 
             const params = {
                   SessionId,
                   VideoWidth,
                   VideoHeight,
-                  ChallengeVersions,
+                  ChallengeVersions: ChallengeVersions[0],
                   LivenessRequestStream: readableStream,
             };
 
