@@ -50,10 +50,8 @@ app.get("/aws-check", async (req, res) => {
 // 🎥 Start Liveness Streaming Endpoint
 app.post("/startStreaming", async (req, res) => {
       try {
-            const { SessionId, videoChunks, VideoWidth = "720", VideoHeight = "1280", ChallengeVersions = "1.0" } = req.body;
+            const { SessionId, videoChunks, VideoWidth, VideoHeight, ChallengeVersions } = req.body;
             if (!Array.isArray(videoChunks)) return res.status(400).json({ message: "Invalid videoChunks format" });
-
-            console.log(`Received ${videoChunks.length} chunks for session ${SessionId}`);
 
             const chunkSize = 64 * 1024;
             let timestamp = Date.now();
@@ -80,6 +78,8 @@ app.post("/startStreaming", async (req, res) => {
                   ChallengeVersions,
                   LivenessRequestStream: readableStream,
             };
+
+            console.log(readableStream, 'readableStream')
 
             const command = new StartFaceLivenessSessionCommand(params);
             const response = await rekognitionStreamingClient.send(command);
