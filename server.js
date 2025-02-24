@@ -20,6 +20,14 @@ app.use(
 // 📝 Middleware
 app.use(bodyParser.json({ limit: "50mb" }));
 
+// CORS Setup
+app.use((req, res, next) => {
+      res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL || "*");
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+      next();
+});
+
 const credentials = {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -117,6 +125,7 @@ app.post("/startStreaming", async (req, res) => {
                                           VideoEvent: {
                                                 VideoChunk: new Uint8Array(bufferChunk.subarray(i, i + chunkSize)),
                                                 TimestampMillis: timestamp,
+                                                ContentType: "application/octet-stream",
                                           },
                                     };
                                     timestamp += 50;
@@ -129,7 +138,7 @@ app.post("/startStreaming", async (req, res) => {
                   SessionId,
                   VideoWidth,
                   VideoHeight,
-                  ChallengeVersions: ChallengeVersions[0],
+                  ChallengeVersions,
                   LivenessRequestStream: readableStream,
             };
 
