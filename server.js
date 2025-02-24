@@ -150,8 +150,7 @@ app.post("/startStreaming", async (req, res) => {
       } catch (error) {
             console.error("🔴 AWS Raw Error:", error);
             res.status(500).json({
-                  message: "AWS Error",
-                  error: error.message,
+                  error: error,
                   awsRaw: error?.$response,
             });
       }
