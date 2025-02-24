@@ -136,7 +136,7 @@ app.post("/startStreaming", async (req, res) => {
                   SessionId: SessionId.toString(),
                   VideoWidth: VideoWidth.toString(),
                   VideoHeight: VideoHeight.toString(),
-                  ChallengeVersions: "1.0",
+                  ChallengeVersions: ["1.0"],
                   LivenessRequestStream: readableStream,
             };
 
