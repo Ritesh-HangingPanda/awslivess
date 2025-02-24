@@ -120,9 +120,11 @@ app.post("/startStreaming", async (req, res) => {
                         for (const base64Chunk of videoChunks) {
                               const bufferChunk = Buffer.from(base64Chunk, "base64");
                               for (let i = 0; i < bufferChunk.length; i += chunkSize) {
+                                    const chunk = bufferChunk.subarray(i, i + chunkSize);
+                                    console.log("🟢 Streaming chunk size:", chunk.length);
                                     yield {
                                           VideoEvent: {
-                                                VideoChunk: new Uint8Array(bufferChunk.subarray(i, i + chunkSize)),
+                                                VideoChunk: new Uint8Array(chunk),
                                                 TimestampMillis: timestamp,
                                                 ContentType: "application/octet-stream",
                                           },
@@ -137,7 +139,7 @@ app.post("/startStreaming", async (req, res) => {
                   SessionId: SessionId.toString(),
                   VideoWidth: VideoWidth.toString(),
                   VideoHeight: VideoHeight.toString(),
-                  ChallengeVersions: "1.0",
+                  ChallengeVersions: ["1.0"],
                   LivenessRequestStream: readableStream,
             };
 
