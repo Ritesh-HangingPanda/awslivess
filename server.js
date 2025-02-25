@@ -46,11 +46,11 @@ const rekognitionClient = new RekognitionClient({
 });
 
 const rekognitionStreamingClient = new RekognitionStreamingClient({
-      region: "us-east-1",
-      endpoint: "wss://streaming-rekognition.us-east-1.amazonaws.com",
+      region: process.env.AWS_REGION,
+      endpoint: `wss://streaming-rekognition.${process.env.AWS_REGION}.amazonaws.com`,
       requestHandler: new NodeHttpHandler({
-            connectionTimeout: 30000, // 30 seconds
-            socketTimeout: 30000,
+            connectionTimeout: 60000, // 60 seconds
+            socketTimeout: 60000,
       }),
 });
 
@@ -87,18 +87,20 @@ app.post("/startStreaming", async (req, res) => {
             } = req.body;
 
             if (
-                  !SessionId
-                  || !Array.isArray(videoChunks)
-                  || !VideoWidth
-                  || !VideoHeight
-                  || !ChallengeId
-                  || !InitialFace
-                  || !TargetFace
-                  || !ColorDisplayed
+                  !SessionId ||
+                  !Array.isArray(videoChunks) ||
+                  !VideoWidth ||
+                  !VideoHeight ||
+                  !ChallengeId ||
+                  !InitialFace ||
+                  !TargetFace ||
+                  !ColorDisplayed
             ) {
-                  return res.status(400).json({
-                        message: "Missing required fields",
-                  });
+                  return res.status(400).json({ message: "Missing required fields" });
+            }
+
+            if (videoChunks.join("").length > 10 * 1024 * 1024) {
+                  return res.status(400).json({ message: "Video size exceeds 10MB limit" });
             }
 
             const chunkSize = 64 * 1024;
@@ -106,7 +108,6 @@ app.post("/startStreaming", async (req, res) => {
 
             const readableStream = Readable.from(
                   (async function* () {
-                        // 🔵 Correct: Yield object directly (SDK handles serialization)
                         yield {
                               ClientSessionInformationEvent: {
                                     Challenge: {
@@ -122,13 +123,10 @@ app.post("/startStreaming", async (req, res) => {
                               },
                         };
 
-                        // 🔵 Stream video chunks correctly as { VideoEvent: { VideoChunk, TimestampMillis } }
                         for (const base64Chunk of videoChunks) {
                               const bufferChunk = Buffer.from(base64Chunk, "base64");
                               for (let i = 0; i < bufferChunk.length; i += chunkSize) {
                                     const chunk = bufferChunk.subarray(i, i + chunkSize);
-                                    console.log("🟢 Streaming chunk size:", chunk.length);
-
                                     yield {
                                           VideoEvent: {
                                                 VideoChunk: chunk,
@@ -146,10 +144,6 @@ app.post("/startStreaming", async (req, res) => {
                   VideoWidth: VideoWidth.toString(),
                   VideoHeight: VideoHeight.toString(),
                   ChallengeVersions: "1.0",
-                  ChallengeId,
-                  InitialFace,
-                  TargetFace,
-                  ColorDisplayed,
                   LivenessRequestStream: readableStream,
             };
 
@@ -163,7 +157,7 @@ app.post("/startStreaming", async (req, res) => {
       } catch (error) {
             console.error("🔴 AWS Raw Error:", error?.$response?.body);
             res.status(500).json({
-                  error: error,
+                  error: error.message,
                   awsRaw: error?.$response,
             });
       }
