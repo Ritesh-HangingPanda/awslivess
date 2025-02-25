@@ -105,7 +105,7 @@ app.post("/startStreaming", async (req, res) => {
 
             const readableStream = Readable.from(
                   (async function* () {
-                        // 🔵 Send ClientSessionInformationEvent
+                        // 🔵 Correct: Yield object directly (SDK handles serialization)
                         yield {
                               ClientSessionInformationEvent: {
                                     Challenge: {
@@ -121,7 +121,7 @@ app.post("/startStreaming", async (req, res) => {
                               },
                         };
 
-                        // 🔵 Send VideoEvent chunks properly
+                        // 🔵 Stream video chunks correctly as { VideoEvent: { VideoChunk, TimestampMillis } }
                         for (const base64Chunk of videoChunks) {
                               const bufferChunk = Buffer.from(base64Chunk, "base64");
                               for (let i = 0; i < bufferChunk.length; i += chunkSize) {
@@ -156,7 +156,7 @@ app.post("/startStreaming", async (req, res) => {
                   result: response,
             });
       } catch (error) {
-            console.error("🔴 AWS Raw Error:", error);
+            console.error("🔴 AWS Raw Error:", error?.$response?.body);
             res.status(500).json({
                   error: error,
                   awsRaw: error?.$response,
