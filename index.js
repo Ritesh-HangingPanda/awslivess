@@ -167,10 +167,14 @@ const startLivenessStreaming = async (
             const command = new StartFaceLivenessSessionCommand(params);
             const response = await rekognitionStreamingClient.send(command);
 
-            res.status(200).json({
-                  message: "Liveness streaming started successfully",
-                  result: response,
-            });
+            return {
+                  statusCode: 200,
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                        message: "Liveness streaming started successfully",
+                        result: response,
+                  }),
+            };
       } catch (error) {
             return errorResponse("Failed to start liveness streaming", error);
       }
