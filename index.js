@@ -16,7 +16,7 @@ const { Readable } = require("readable-stream");
 const rekognitionClient = new RekognitionClient({ region: "us-east-1" });
 const rekognitionStreamingClient = new RekognitionStreamingClient({
       region: "us-east-1",
-      endpoint: "rekognition.us-east-1.amazonaws.com",
+      endpoint: "https://rekognition.us-east-1.amazonaws.com",
 });
 
 exports.handler = async (event) => {
