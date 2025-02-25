@@ -119,7 +119,6 @@ const startLivenessStreaming = async (
 ) => {
       try {
             const chunkSize = 64 * 1024;
-
             let timestamp = Date.now();
 
             const readableStream = Readable.from(
@@ -143,7 +142,6 @@ const startLivenessStreaming = async (
                               const bufferChunk = Buffer.from(base64Chunk, "base64");
                               for (let i = 0; i < bufferChunk.length; i += chunkSize) {
                                     const chunk = bufferChunk.subarray(i, i + chunkSize);
-
                                     yield {
                                           VideoEvent: {
                                                 VideoChunk: chunk,
