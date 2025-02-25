@@ -6,6 +6,7 @@ const { Readable } = require("readable-stream");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
 const { RekognitionClient, ListCollectionsCommand } = require("@aws-sdk/client-rekognition");
 const { RekognitionStreamingClient, StartFaceLivenessSessionCommand } = require("@aws-sdk/client-rekognitionstreaming");
+const { NodeHttpHandler } = require("@smithy/node-http-handler");
 
 const app = express();
 
@@ -45,12 +46,12 @@ const rekognitionClient = new RekognitionClient({
 });
 
 const rekognitionStreamingClient = new RekognitionStreamingClient({
-      region: process.env.AWS_REGION,
-      credentials,
-      endpoint: `https://rekognition.${process.env.AWS_REGION}.amazonaws.com`,
-      maxAttempts: 3,
-      retryMode: "standard",
-      logger: console
+      region: "us-east-1",
+      endpoint: "wss://streaming-rekognition.us-east-1.amazonaws.com",
+      requestHandler: new NodeHttpHandler({
+            connectionTimeout: 30000, // 30 seconds
+            socketTimeout: 30000,
+      }),
 });
 
 // 🚀 API Endpoint for AWS Connectivity Check
