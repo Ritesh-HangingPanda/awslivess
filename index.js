@@ -16,7 +16,7 @@ const { Readable } = require("readable-stream");
 const rekognitionClient = new RekognitionClient({ region: "us-east-1" });
 const rekognitionStreamingClient = new RekognitionStreamingClient({
       region: "us-east-1",
-      endpoint: "https://rekognition.us-east-1.amazonaws.com",
+      endpoint: "https://streaming-rekognition.us-east-1.amazonaws.com",
 });
 
 exports.handler = async (event) => {
@@ -47,9 +47,7 @@ exports.handler = async (event) => {
                               || !TargetFace
                               || !ColorDisplayed
                         ) {
-                              return res.status(400).json({
-                                    message: "Missing required fields",
-                              });
+                              return invalidRequestResponse();
                         } else {
                               return await startLivenessStreaming(
                                     SessionId,
