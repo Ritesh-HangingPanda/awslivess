@@ -145,6 +145,10 @@ app.post("/startStreaming", async (req, res) => {
                   VideoWidth: VideoWidth.toString(),
                   VideoHeight: VideoHeight.toString(),
                   ChallengeVersions: "1.0",
+                  ChallengeId,
+                  InitialFace,
+                  TargetFace,
+                  ColorDisplayed,
                   LivenessRequestStream: readableStream,
             };
 
