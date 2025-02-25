@@ -16,7 +16,7 @@ const { Readable } = require("readable-stream");
 const rekognitionClient = new RekognitionClient({ region: "us-east-1" });
 const rekognitionStreamingClient = new RekognitionStreamingClient({
       region: "us-east-1",
-      endpoint: "https://streaming-rekognition.us-east-1.amazonaws.com",
+      endpoint: "wss://streaming-rekognition.us-east-1.amazonaws.com",
 });
 
 exports.handler = async (event) => {
@@ -27,39 +27,7 @@ exports.handler = async (event) => {
                   case "createSession":
                         return await createLivenessSession();
                   case "startStreaming":
-                        const {
-                              SessionId,
-                              videoChunks,
-                              VideoWidth,
-                              VideoHeight,
-                              ChallengeId,
-                              InitialFace,
-                              TargetFace,
-                              ColorDisplayed,
-                        } = body;
-                        if (
-                              !SessionId
-                              || !Array.isArray(videoChunks)
-                              || !VideoWidth
-                              || !VideoHeight
-                              || !ChallengeId
-                              || !InitialFace
-                              || !TargetFace
-                              || !ColorDisplayed
-                        ) {
-                              return invalidRequestResponse();
-                        } else {
-                              return await startLivenessStreaming(
-                                    SessionId,
-                                    videoChunks,
-                                    VideoWidth,
-                                    VideoHeight,
-                                    ChallengeId,
-                                    InitialFace,
-                                    TargetFace,
-                                    ColorDisplayed
-                              );
-                        }
+                        return await handleStartStreaming(body);
                   case "getResults":
                         if (body.sessionId) {
                               return await getLivenessResults(body.sessionId);
@@ -104,7 +72,47 @@ const createLivenessSession = async () => {
       }
 };
 
-// Start Liveness Streaming with chunked data
+const handleStartStreaming = async (body) => {
+      const {
+            SessionId,
+            videoChunks,
+            VideoWidth,
+            VideoHeight,
+            ChallengeId,
+            InitialFace,
+            TargetFace,
+            ColorDisplayed,
+      } = body;
+
+      if (
+            !SessionId
+            || !Array.isArray(videoChunks)
+            || !VideoWidth
+            || !VideoHeight
+            || !ChallengeId
+            || !InitialFace
+            || !TargetFace
+            || !ColorDisplayed
+      ) {
+            return invalidRequestResponse();
+      }
+
+      if (videoChunks.reduce((acc, chunk) => acc + Buffer.from(chunk, "base64").length, 0) > 10 * 1024 * 1024) {
+            return errorResponse("Video size exceeds the 10MB limit", new Error("ValidationException"));
+      }
+
+      return await startLivenessStreaming(
+            SessionId,
+            videoChunks,
+            VideoWidth,
+            VideoHeight,
+            ChallengeId,
+            InitialFace,
+            TargetFace,
+            ColorDisplayed
+      );
+};
+
 const startLivenessStreaming = async (
       SessionId,
       videoChunks,
