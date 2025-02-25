@@ -11,10 +11,13 @@ const {
       StartFaceLivenessSessionCommand,
 } = require("@aws-sdk/client-rekognitionstreaming");
 
-const { Readable } = require("stream");
+const { Readable } = require("readable-stream");
 
 const rekognitionClient = new RekognitionClient({ region: "us-east-1" });
-const rekognitionStreamingClient = new RekognitionStreamingClient({ region: "us-east-1" });
+const rekognitionStreamingClient = new RekognitionStreamingClient({
+      region: "us-east-1",
+      endpoint: "rekognition.us-east-1.amazonaws.com",
+});
 
 exports.handler = async (event) => {
       try {
@@ -24,10 +27,41 @@ exports.handler = async (event) => {
                   case "createSession":
                         return await createLivenessSession();
                   case "startStreaming":
-                        if (body.sessionId && body.videoChunks) {
-                              return await startLivenessStreaming(body.sessionId, body.videoChunks);
+                        const {
+                              SessionId,
+                              videoChunks,
+                              VideoWidth,
+                              VideoHeight,
+                              ChallengeId,
+                              InitialFace,
+                              TargetFace,
+                              ColorDisplayed,
+                        } = body;
+                        if (
+                              !SessionId
+                              || !Array.isArray(videoChunks)
+                              || !VideoWidth
+                              || !VideoHeight
+                              || !ChallengeId
+                              || !InitialFace
+                              || !TargetFace
+                              || !ColorDisplayed
+                        ) {
+                              return res.status(400).json({
+                                    message: "Missing required fields",
+                              });
+                        } else {
+                              return await startLivenessStreaming(
+                                    SessionId,
+                                    videoChunks,
+                                    VideoWidth,
+                                    VideoHeight,
+                                    ChallengeId,
+                                    InitialFace,
+                                    TargetFace,
+                                    ColorDisplayed
+                              );
                         }
-                        break;
                   case "getResults":
                         if (body.sessionId) {
                               return await getLivenessResults(body.sessionId);
@@ -73,41 +107,70 @@ const createLivenessSession = async () => {
 };
 
 // Start Liveness Streaming with chunked data
-const startLivenessStreaming = async (sessionId, videoChunksBase64) => {
+const startLivenessStreaming = async (
+      SessionId,
+      videoChunks,
+      VideoWidth,
+      VideoHeight,
+      ChallengeId,
+      InitialFace,
+      TargetFace,
+      ColorDisplayed
+) => {
       try {
-            if (!Array.isArray(videoChunksBase64)) {
-                  throw new Error("videoChunksBase64 must be an array");
-            }
-            const videoBuffer = Buffer.concat(videoChunksBase64.map(chunk => Buffer.from(chunk, "base64")));
             const chunkSize = 64 * 1024;
 
-            const readableStream = new Readable({
-                  async read() {
-                        for (let i = 0; i < videoBuffer.length; i += chunkSize) {
-                              const chunk = videoBuffer.subarray(i, i + chunkSize);
-                              this.push(chunk);
-                              await new Promise((resolve) => setTimeout(resolve, 50));
+            let timestamp = Date.now();
+
+            const readableStream = Readable.from(
+                  (async function* () {
+                        yield {
+                              ClientSessionInformationEvent: {
+                                    Challenge: {
+                                          FaceMovementAndLightChallenge: {
+                                                ChallengeId,
+                                                VideoStartTimestamp: timestamp,
+                                                VideoEndTimestamp: timestamp + videoChunks.length * 50,
+                                                InitialFace,
+                                                TargetFace,
+                                                ColorDisplayed,
+                                          },
+                                    },
+                              },
+                        };
+
+                        for (const base64Chunk of videoChunks) {
+                              const bufferChunk = Buffer.from(base64Chunk, "base64");
+                              for (let i = 0; i < bufferChunk.length; i += chunkSize) {
+                                    const chunk = bufferChunk.subarray(i, i + chunkSize);
+
+                                    yield {
+                                          VideoEvent: {
+                                                VideoChunk: chunk,
+                                                TimestampMillis: timestamp,
+                                          },
+                                    };
+                                    timestamp += 50;
+                              }
                         }
-                        this.push(null);
-                  },
-            });
+                  })()
+            );
 
             const params = {
-                  SessionId: sessionId,
+                  SessionId: SessionId.toString(),
+                  VideoWidth: VideoWidth.toString(),
+                  VideoHeight: VideoHeight.toString(),
+                  ChallengeVersions: "1.0",
                   LivenessRequestStream: readableStream,
             };
 
             const command = new StartFaceLivenessSessionCommand(params);
             const response = await rekognitionStreamingClient.send(command);
 
-            return {
-                  statusCode: 200,
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                        message: "Liveness streaming started successfully",
-                        result: response,
-                  }),
-            };
+            res.status(200).json({
+                  message: "Liveness streaming started successfully",
+                  result: response,
+            });
       } catch (error) {
             return errorResponse("Failed to start liveness streaming", error);
       }
