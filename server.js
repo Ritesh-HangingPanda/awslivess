@@ -47,7 +47,7 @@ const rekognitionClient = new RekognitionClient({
 const rekognitionStreamingClient = new RekognitionStreamingClient({
       region: process.env.AWS_REGION,
       credentials,
-      endpoint: `https://streaming-rekognition.${process.env.AWS_REGION}.amazonaws.com`,
+      endpoint: `https://rekognition.${process.env.AWS_REGION}.amazonaws.com`,
       maxAttempts: 3,
       retryMode: "standard",
       logger: console
