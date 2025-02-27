@@ -52,6 +52,12 @@ const errorResponse = (message, error) => ({
       body: JSON.stringify({ message, error: error.message }),
 });
 
+const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "OPTIONS, POST",
+      "Access-Control-Allow-Headers": "Content-Type",
+};
+
 // Create Liveness Session
 const createLivenessSession = async () => {
       try {
@@ -61,7 +67,7 @@ const createLivenessSession = async () => {
 
             return {
                   statusCode: 200,
-                  headers: { "Content-Type": "application/json" },
+                  headers: corsHeaders,
                   body: JSON.stringify({
                         message: "Liveness session created successfully",
                         result: response,
@@ -173,7 +179,7 @@ const startLivenessStreaming = async (
 
             return {
                   statusCode: 200,
-                  headers: { "Content-Type": "application/json" },
+                  headers: corsHeaders,
                   body: JSON.stringify({
                         message: "Liveness streaming started successfully",
                         result: response,
@@ -196,7 +202,7 @@ const getLivenessResults = async (sessionId) => {
 
             return {
                   statusCode: 200,
-                  headers: { "Content-Type": "application/json" },
+                  headers: corsHeaders,
                   body: JSON.stringify({
                         message: "Liveness results fetched successfully",
                         livenessConfirmed: isLivenessConfirmed,
